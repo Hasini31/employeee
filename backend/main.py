@@ -734,31 +734,42 @@ def compute_custom_analytics(start_date_str, end_date_str, analysis_type='daily'
     conn.close()
 
     if analysis_type == 'weekly_grouped':
-        # Group by Monday-Sunday (7 points)
-        days_map = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'}
+        # Group by ISO week and display explicit date ranges.
         from collections import defaultdict
-        dow_data = defaultdict(lambda: {'burnouts': [], 'fatigues': []})
+        week_data = defaultdict(lambda: {'burnouts': [], 'fatigues': [], 'dates': []})
 
         for row in rows:
             date_str = row[0]
-            if not date_str: continue
+            if not date_str:
+                continue
             try:
                 d = datetime.strptime(date_str, '%Y-%m-%d').date()
-                dow = d.weekday() # 0 = Monday, 6 = Sunday
-                dow_data[dow]['burnouts'].append(row[1] if row[1] else 0)
-                dow_data[dow]['fatigues'].append(row[2] if row[2] else 0)
+                iso = d.isocalendar()
+                week_key = f"{iso[0]}-W{iso[1]:02d}"
+                week_data[week_key]['burnouts'].append(row[1] if row[1] else 0)
+                week_data[week_key]['fatigues'].append(row[2] if row[2] else 0)
+                week_data[week_key]['dates'].append(d)
             except Exception:
                 pass
-        
+
         result_data = []
-        for i in range(7):
-            b_list = dow_data[i]['burnouts']
-            f_list = dow_data[i]['fatigues']
+        for week_key in sorted(week_data.keys()):
+            b_list = week_data[week_key]['burnouts']
+            f_list = week_data[week_key]['fatigues']
+            dates = week_data[week_key]['dates']
+            if dates:
+                min_date = min(dates).strftime('%Y-%m-%d')
+                max_date = max(dates).strftime('%Y-%m-%d')
+                label = min_date if min_date == max_date else f"{min_date} to {max_date}"
+            else:
+                label = week_key
+
             result_data.append({
-                'label': days_map[i],
+                'label': label,
                 'avg_burnout': round(sum(b_list) / len(b_list), 2) if b_list else 0,
                 'avg_fatigue': round(sum(f_list) / len(f_list), 2) if f_list else 0
             })
+
         return {'grouped_data': result_data, 'view_type': 'weekly_grouped'}
 
     elif analysis_type == 'monthly_grouped':

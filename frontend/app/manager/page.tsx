@@ -135,7 +135,6 @@ export default function ManagerDashboard() {
   const initialDates = getInitialDates();
   const [startDate, setStartDate] = useState(initialDates.start);
   const [endDate, setEndDate] = useState(initialDates.end);
-  const [analysisType, setAnalysisType] = useState<"daily" | "weekly_grouped" | "monthly_grouped">("daily");
   const [rangeData, setRangeData] = useState<any>(null);
 
   const fetchInsights = useCallback(async (token: string) => {
@@ -162,11 +161,11 @@ export default function ManagerDashboard() {
     }
   }, [router]);
 
-  const fetchRangeData = async (start = startDate, end = endDate, type = analysisType) => {
+  const fetchRangeData = async (start = startDate, end = endDate) => {
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
-      const res = await fetch(`/api/analytics-range?startDate=${start}&endDate=${end}&analysisType=${type}`, {
+      const res = await fetch(`/api/analytics-range?startDate=${start}&endDate=${end}&analysisType=daily`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -178,12 +177,7 @@ export default function ManagerDashboard() {
   };
 
   const handleApplyRange = () => {
-    fetchRangeData(startDate, endDate, analysisType);
-  };
-
-  const handleAnalysisTypeChange = (type: "daily" | "weekly_grouped" | "monthly_grouped") => {
-    setAnalysisType(type);
-    fetchRangeData(startDate, endDate, type);
+    fetchRangeData(startDate, endDate);
   };
 
   useEffect(() => {
@@ -231,16 +225,10 @@ export default function ManagerDashboard() {
   let plotBurnout: number[] = [];
   let plotFatigue: number[] = [];
 
-  const viewType = rangeData?.view_type || 'daily';
-
-  if (viewType === 'daily' && rangeData?.daily_data) {
+  if (rangeData?.daily_data) {
     plotLabels = rangeData.daily_data.map((d: any) => safeDate(d.date));
     plotBurnout = rangeData.daily_data.map((d: any) => d.avg_burnout);
     plotFatigue = rangeData.daily_data.map((d: any) => d.avg_fatigue);
-  } else if ((viewType === 'weekly_grouped' || viewType === 'monthly_grouped') && rangeData?.grouped_data) {
-    plotLabels = rangeData.grouped_data.map((d: any) => d.label);
-    plotBurnout = rangeData.grouped_data.map((d: any) => d.avg_burnout);
-    plotFatigue = rangeData.grouped_data.map((d: any) => d.avg_fatigue);
   } else if (!rangeData && insights?.weekly_analytics?.daily_data) {
     plotLabels = insights.weekly_analytics.daily_data.map((d: any) => safeDate(d.date));
     plotBurnout = insights.weekly_analytics.daily_data.map((d: any) => d.avg_burnout);
@@ -256,7 +244,7 @@ export default function ManagerDashboard() {
       data,
       borderColor: color,
       backgroundColor: bgColor,
-      fill: true, tension: 0.4, pointRadius: viewType === "weekly" ? 6 : 4,
+      fill: true, tension: 0.4, pointRadius: 4,
       pointHoverRadius: 8,
     }]
   });
@@ -528,30 +516,8 @@ export default function ManagerDashboard() {
         {/* ═══ SECTION: ANALYTICS ═══ */}
         {activeSection === "analytics" && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', marginTop: "1rem" }}>
-              <div className="modern-dashboard-tabs">
-                <button 
-                  className={`modern-dashboard-tab ${analysisType === 'daily' ? 'active' : ''}`}
-                  onClick={() => handleAnalysisTypeChange('daily')}
-                  style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-                >
-                  Daily View (Last 7 Days)
-                </button>
-                <button 
-                  className={`modern-dashboard-tab ${analysisType === 'weekly_grouped' ? 'active' : ''}`}
-                  onClick={() => handleAnalysisTypeChange('weekly_grouped')}
-                  style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-                >
-                  Weekly Analysis
-                </button>
-                <button 
-                  className={`modern-dashboard-tab ${analysisType === 'monthly_grouped' ? 'active' : ''}`}
-                  onClick={() => handleAnalysisTypeChange('monthly_grouped')}
-                  style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-                >
-                  Monthly Analysis
-                </button>
-              </div>
+            <div style={{ textAlign: "center", marginBottom: "1rem", marginTop: "0.25rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Default: previous week analysis. Choose a date range and apply to view custom analytics.
             </div>
 
             <div className="card slide-up" style={{ padding: "2rem", marginBottom: "2rem", maxWidth: "460px", marginLeft: "auto", marginRight: "auto" }}>

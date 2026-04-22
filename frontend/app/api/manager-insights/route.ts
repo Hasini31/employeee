@@ -14,7 +14,16 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const data = await response.json();
+    const raw = await response.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      data = {
+        error: 'Backend returned non-JSON response',
+        details: raw.slice(0, 300),
+      };
+    }
 
     if (!response.ok) {
       return NextResponse.json(data, { status: response.status });
